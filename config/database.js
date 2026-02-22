@@ -1,40 +1,29 @@
 // config/database.js
 export default ({ env }) => {
-  // Determine if runtime environment is production
+  // Determine runtime environment
   const isProduction = env('NODE_ENV') === 'production';
 
-  // -----------------------------
-  // Production: PostgreSQL
-  // -----------------------------
-  if (isProduction) {
-    return {
-      connection: {
-        client: 'postgres',
-        connection: () => {
-          // Access DATABASE_URL only at runtime
-          const connectionString = env('DATABASE_URL');
-          if (!connectionString) {
-            throw new Error(
-              'DATABASE_URL is missing! Make sure it is set in Railway variables.'
-            );
-          }
-          return {
-            connectionString,
-            ssl: { rejectUnauthorized: false },
-          };
-        },
-      },
-    };
-  }
-
-  // -----------------------------
-  // Development / Build: SQLite
-  // -----------------------------
-  return {
+  // SQLite fallback for build-time & dev
+  const defaultDb = {
     connection: {
       client: 'sqlite',
       connection: { filename: env('DATABASE_FILENAME', '.tmp/data.db') },
       useNullAsDefault: true,
     },
   };
+
+  // Only try Postgres if NODE_ENV=production **and at runtime**
+  if (isProduction && typeof process.env.DATABASE_URL !== 'undefined') {
+    return {
+      connection: {
+        client: 'postgres',
+        connection: {
+          connectionString: process.env.DATABASE_URL,
+          ssl: { rejectUnauthorized: false },
+        },
+      },
+    };
+  }
+
+  return defaultDb;
 };
