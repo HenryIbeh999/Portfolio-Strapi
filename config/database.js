@@ -1,21 +1,35 @@
 // config/database.js
 export default ({ env }) => {
+  // Determine if runtime environment is production
   const isProduction = env('NODE_ENV') === 'production';
 
-  // During build, avoid accessing DATABASE_CLIENT or DATABASE_URL
+  // -----------------------------
+  // Production: PostgreSQL
+  // -----------------------------
   if (isProduction) {
     return {
       connection: {
         client: 'postgres',
-        connection: {
-          connectionString: env('DATABASE_URL'),
-          ssl: { rejectUnauthorized: false },
+        connection: () => {
+          // Access DATABASE_URL only at runtime
+          const connectionString = env('DATABASE_URL');
+          if (!connectionString) {
+            throw new Error(
+              'DATABASE_URL is missing! Make sure it is set in Railway variables.'
+            );
+          }
+          return {
+            connectionString,
+            ssl: { rejectUnauthorized: false },
+          };
         },
       },
     };
   }
 
-  // Otherwise, use SQLite safely
+  // -----------------------------
+  // Development / Build: SQLite
+  // -----------------------------
   return {
     connection: {
       client: 'sqlite',
